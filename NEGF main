@@ -1,0 +1,90 @@
+clc;
+clear;
+
+%constants
+e=1.60*10^(-19); %electron charge  
+h=6.62*10^(-34); %Planck constant
+delta=10^(-6); %iteration limit
+N=NOAO;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% No vacancy %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Define Hamiltonians 
+H00
+H01
+
+
+%Calculating the surface retarded Green’s functions of the left and right leads
+%By Sancho-Rubio's method
+k=1;
+GE=zeros(1,501);
+Rho=zeros(1,501);
+for E=-1:0.01:4
+   
+Eplus=E+0.0000001i;     
+I=eye(N);
+EplusI=Eplus*I;
+t0=(inv(EplusI-H00))*H01';
+ttilda0=(inv(EplusI-H00))*H01;
+t=t0;
+ttilda=ttilda0;
+t00=t0;
+ttilda00=ttilda0;
+f=1;
+ftilda=1;
+Lambda=0;
+Lambdatilda=0;
+        while (real(sqrt(sum(eig(t*t'))))>=delta && real(sqrt(sum(eig(ttilda*ttilda'))))>=delta)
+          f=f*ttilda;
+          ftilda=ftilda*t;
+          t=(I-t0*(ttilda0)-(ttilda0)*t0)\(t0*t0);
+          ttilda=(I-t0*(ttilda0)-(ttilda0)*t0)\((ttilda0)*(ttilda0));
+          Lambda=Lambda+f*t;
+          Lambdatilda=Lambdatilda+(ftilda)*(ttilda);
+          t0=t;
+          ttilda0=ttilda;
+        end
+        
+Lambda=Lambda+t00;
+Lambdatilda=Lambdatilda+ttilda00;
+g00L=inv(EplusI-H00-H01'*Lambdatilda);
+gM1M1R=inv(EplusI-H00-H01*Lambda);
+
+%New surface Green's functions
+g=cell(19,1);
+for i=20:-1:2 %i is the number of Supercells
+    g{21}=gM1M1R;
+    g{i}=inv(EplusI-H00-((H01)*(g{i+1})*(H01')));  
+end
+SigmaL=(H01'*g00L*H01); %g00L is the first cell in the left side
+SigmaR=(H01*g{2}*H01');
+Rho(1,k)=(-1/pi)*imag(trace(g{2}));   %This line calculates LDoS 
+%Total Green's function
+G11=inv(EplusI-H00-SigmaL-SigmaR);
+GammaL=1i*(SigmaL-SigmaL');
+GammaR=1i*(SigmaR-SigmaR');
+
+%calculating transmission coefficient
+%T=real(sum(eig((GammaL)*(G11)*(GammaR)*(G11'))));
+T=trace((GammaL)*(G11)*(GammaR)*(G11'));
+
+%Conductance of MXene Nanoribbon
+%GE(1,k)=(2*e*e/h)*T;
+GE(1,k)=T;
+k
+k=k+1;
+end
+RGE=real(GE);
+%%%%%%%%%%%%%%%%%%%% plotting  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+EE=linspace(-1,4,501);
+E=-1:0.01:4;
+
+plot(GE,E,'b','LineWidth',0.75)
+%plot(Rho,E,'g','LineWidth',0.75)
+ylabel('E(eV)')
+xlabel('LDOS')
+%xlabel('G(2e^2/h)')
+%xlim([0 6])
+ylim([-1 4])
+% %legend(' NO vacancy ')
+
